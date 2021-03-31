@@ -1,5 +1,6 @@
 import './light'
-import './outlet'
 import './switch'
-import './camera'
-import './vacuum';
+import './fan'
+import './lock';
+import './sensor';
+import './camera';

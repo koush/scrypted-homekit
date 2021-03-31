@@ -1,19 +1,13 @@
-import { OnOff, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk';
-import { addSupportedType, syncResponse } from '../common';
+
+import { OnOff, ScryptedDevice, ScryptedDeviceType } from '@scrypted/sdk'
+import { addSupportedType } from '../common'
+import { Service } from 'hap-nodejs';
+import { probe } from './onoff-base';
 
 addSupportedType({
-    type: ScryptedDeviceType.Outlet,
-    probe: async (device) => {
-        if (!device.interfaces.includes(ScryptedInterface.OnOff))
-            return;
-    
-        const ret = syncResponse(device, 'action.devices.types.OUTLET');
-        ret.traits.push('action.devices.traits.OnOff');
-        return ret;
-    },
-    query: async (device: ScryptedDevice & OnOff) => {
-        const ret: any= {};
-        ret.on = device.on;
-        return ret;
-    },
-})
+    type: ScryptedDeviceType.Switch,
+    probe: (device: ScryptedDevice & OnOff) => {
+        const {accessory, service} = probe(device, Service.Outlet);
+        return accessory;
+    }
+});

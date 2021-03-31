@@ -1,58 +1,32 @@
-import { Brightness, ColorSettingHsv, ColorSettingRgb, ColorSettingTemperature, OnOff, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk';
-import { addSupportedType, syncResponse } from '../common';
+
+import { Brightness, OnOff, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
+import { addSupportedType } from '../common'
+import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from 'hap-nodejs';
+import { probe } from './onoff-base';
 
 addSupportedType({
     type: ScryptedDeviceType.Light,
-    probe: async (device) => {
-        if (!device.interfaces.includes(ScryptedInterface.OnOff))
+    probe: (device: ScryptedDevice & OnOff & Brightness) => {
+        const {accessory, service} = probe(device, Service.Lightbulb);
+        if (!accessory)
             return;
-    
-        const ret = syncResponse(device, 'action.devices.types.LIGHT');
-        ret.traits.push('action.devices.traits.OnOff');
-        
-        if (device.interfaces.includes(ScryptedInterface.Brightness))
-            ret.traits.push('action.devices.traits.Brightness');
 
-        if (device.interfaces.includes(ScryptedInterface.ColorSettingHsv) ||
-            device.interfaces.includes(ScryptedInterface.ColorSettingRgb) ||
-            device.interfaces.includes(ScryptedInterface.ColorSettingTemperature)) {
-            ret.traits.push('action.devices.traits.ColorSetting');
+        if (device.interfaces.includes(ScryptedInterface.Brightness)) {
+            service.addCharacteristic(Characteristic.Brightness)
+                .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
+                    callback();
+                    device.setBrightness(value as number);
+                })
+                .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
+                    callback(null, !!device.brightness);
+                });
 
-            if (device.interfaces.includes(ScryptedInterface.ColorSettingHsv))
-                ret.attributes['colorModel'] = 'hsv';
-            else
-                ret.attributes['colorModel'] = 'rgb';
-
-            if (device.interfaces.includes(ScryptedInterface.ColorSettingTemperature)) {
-                ret.attributes.colorTemperatureRange = {
-                    temperatureMinK: await (device as ColorSettingTemperature).getTemperatureMinK(),
-                    temperatureMaxK: await (device as ColorSettingTemperature).getTemperatureMaxK(),
-                };
-            }
-        }
-        return ret;
-    },
-    query: async (device: ScryptedDevice & OnOff & Brightness & ColorSettingHsv & ColorSettingRgb & ColorSettingTemperature) => {
-        const ret: any= {};
-        ret.on = device.on;
-        if (device.interfaces.includes(ScryptedInterface.Brightness))
-            ret.brightness = device.brightness;
-        if (device.interfaces.includes(ScryptedInterface.ColorSettingHsv)) {
-            const {hsv} = device;
-            ret.spectrumHsv = {
-                hue: hsv.h,
-                saturation: hsv.s,
-                value: hsv.v,
-            }
-        }
-        else if (device.interfaces.includes(ScryptedInterface.ColorSettingRgb)) {
-            const {rgb} = device;
-            ret.spectrumRgb = (rgb.r << 16) | (rgb.g << 8) | rgb.b;
+            device.listen({
+                event: ScryptedInterface.Brightness,
+                watch: true,
+            }, (source, details, data) => service.updateCharacteristic(Characteristic.Brightness, Math.max(Math.min(data || 0, 0), 100)));
         }
 
-        if (device.interfaces.includes(ScryptedInterface.ColorSettingTemperature))
-            ret.temperatureK = device.colorTemperature;
-
-        return ret;
-    },
-})
+        return accessory;
+    }
+});

@@ -7,7 +7,7 @@ import { probe } from './onoff-base';
 addSupportedType({
     type: ScryptedDeviceType.Switch,
     probe: (device: ScryptedDevice & OnOff) => {
-        const {accessory, service} = probe(device, Service.Switch);
+        const {accessory, service} = probe(device, Service.Fan);
         return accessory;
     }
 });
