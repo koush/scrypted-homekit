@@ -1,16 +1,14 @@
 
 import { OnOff, ScryptedDevice, ScryptedInterface } from '@scrypted/sdk'
 import { uuid, Accessory, Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from 'hap-nodejs';
+import { DummyDevice, listenCharacteristic } from '../common';
 import { makeAccessory } from './common';
 
-export function probe(device: ScryptedDevice & OnOff, serviceType: any): { accessory: Accessory, service: Service } | undefined {
-    if (!device.interfaces.includes(ScryptedInterface.OnOff)) {
-        return {
-            accessory: null,
-            service: null,
-        };
-    }
+export function probe(device: DummyDevice): boolean {
+    return device.interfaces.includes(ScryptedInterface.OnOff);
+}
 
+export function getAccessory(device: ScryptedDevice & OnOff, serviceType: any): { accessory: Accessory, service: Service } | undefined {
     const accessory = makeAccessory(device);
 
     const service = accessory.addService(serviceType, device.name);
@@ -26,10 +24,7 @@ export function probe(device: ScryptedDevice & OnOff, serviceType: any): { acces
             callback(null, !!device.on);
         });
 
-    device.listen({
-        event: ScryptedInterface.OnOff,
-        watch: true,
-    }, (source, details, data) => service.updateCharacteristic(Characteristic.On, !!data));
+        listenCharacteristic(device, ScryptedInterface.OnOff, service, Characteristic.On);
 
     return {
         accessory,

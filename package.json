@@ -12,7 +12,9 @@
    "scrypted": {
       "name": "HomeKit",
       "type": "Device",
-      "interfaces": []
+      "interfaces": [
+         "MixinProvider"
+      ]
    },
    "dependencies": {
       "axios": "^0.21.1",

@@ -1,6 +1,6 @@
 
 import { Camera, FFMpegInput, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, ScryptedMimeTypes, VideoCamera } from '@scrypted/sdk'
-import { addSupportedType } from '../common'
+import { addSupportedType, DummyDevice } from '../common'
 import { AudioStreamingCodecType, AudioStreamingSamplerate, CameraController, CameraStreamingDelegate, CameraStreamingOptions, H264Level, H264Profile, PrepareStreamCallback, PrepareStreamRequest, PrepareStreamResponse, SnapshotRequest, SnapshotRequestCallback, SRTPCryptoSuites, StartStreamRequest, StreamingRequest, StreamRequestCallback, StreamRequestTypes } from 'hap-nodejs';
 import { makeAccessory } from './common';
 
@@ -24,10 +24,10 @@ async function getPort(): Promise<dgram.Socket> {
 
 addSupportedType({
     type: ScryptedDeviceType.Camera,
-    probe: (device: ScryptedDevice & VideoCamera & Camera) => {
-        if (!device.interfaces.includes(ScryptedInterface.VideoCamera))
-            return;
-
+    probe(device: DummyDevice) {
+        return device.interfaces.includes(ScryptedInterface.VideoCamera);
+    },
+    getAccessory(device: ScryptedDevice & VideoCamera & Camera) {
         interface Session {
             request: PrepareStreamRequest;
             videossrc: number;

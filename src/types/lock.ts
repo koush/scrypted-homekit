@@ -1,17 +1,18 @@
 
 import { Lock, LockState, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
-import { addSupportedType } from '../common'
+import { addSupportedType, DummyDevice } from '../common'
 import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
 import { makeAccessory } from './common';
 import { LockCurrentState, LockTargetState } from 'hap-nodejs/dist/lib/definitions';
 
 addSupportedType({
     type: ScryptedDeviceType.Lock,
-    probe: (device: ScryptedDevice & Lock) => {
-        if (!device.interfaces.includes(ScryptedInterface.Lock))
-            return;
+    probe(device: DummyDevice) {
+        return device.interfaces.includes(ScryptedInterface.Lock);
+    },
+    getAccessory: (device: ScryptedDevice & Lock) => {
         const accessory = makeAccessory(device);
-        const service = accessory.addService(Service.LockMechanism);
+        const service = accessory.addService(Service.LockMechanism, device.name);
 
         function toCurrentState(lockState: LockState) {
             switch (lockState) {

@@ -1,16 +1,17 @@
 
 import { BinarySensor, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
-import { addSupportedType } from '../common'
+import { addSupportedType, DummyDevice } from '../common'
 import { Characteristic, CharacteristicEventTypes, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
 import { makeAccessory } from './common';
 
 addSupportedType({
     type: ScryptedDeviceType.Sensor,
-    probe: (device: ScryptedDevice & BinarySensor) => {
-        if (!device.interfaces.includes(ScryptedInterface.BinarySensor))
-            return;
+    probe(device: DummyDevice) {
+        return device.interfaces.includes(ScryptedInterface.BinarySensor);
+    },
+    getAccessory: (device: ScryptedDevice & BinarySensor) => {
         const accessory = makeAccessory(device);
-        const service = accessory.addService(Service.ContactSensor);
+        const service = accessory.addService(Service.ContactSensor, device.name);
         service.getCharacteristic(Characteristic.ContactSensorState)
             .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
                 callback(null, !!device.binaryState);

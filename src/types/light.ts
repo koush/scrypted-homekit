@@ -2,14 +2,13 @@
 import { Brightness, OnOff, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
 import { addSupportedType } from '../common'
 import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from 'hap-nodejs';
-import { probe } from './onoff-base';
+import { probe, getAccessory } from './onoff-base';
 
 addSupportedType({
     type: ScryptedDeviceType.Light,
-    probe: (device: ScryptedDevice & OnOff & Brightness) => {
-        const {accessory, service} = probe(device, Service.Lightbulb);
-        if (!accessory)
-            return;
+    probe,
+    getAccessory: (device: ScryptedDevice & OnOff & Brightness) => {
+        const {accessory, service} = getAccessory(device, Service.Lightbulb);
 
         if (device.interfaces.includes(ScryptedInterface.Brightness)) {
             service.addCharacteristic(Characteristic.Brightness)

@@ -1,7 +1,7 @@
-import sdk, { ScryptedDeviceBase } from '@scrypted/sdk';
+import sdk, { MixinProvider, ScryptedDevice, ScryptedDeviceBase, ScryptedDeviceType } from '@scrypted/sdk';
 
 const { systemManager, mediaManager } = sdk;
-import { Bridge, HAPStorage } from 'hap-nodejs';
+import { Bridge, Categories, HAPStorage } from 'hap-nodejs';
 import os from 'os';
 import { supportedTypes } from './common';
 import './types'
@@ -48,25 +48,87 @@ if (!localStorage.getItem('uuid')) {
 const uuid = localStorage.getItem('uuid');
 
 
+const includeToken = 4;
 
-class HomeKit extends ScryptedDeviceBase {
+class HomeKit extends ScryptedDeviceBase implements MixinProvider {
     bridge = new Bridge('Scrypted', uuid);
     constructor() {
         super();
+        this.start();
+    }
+
+    async start() {
+
+        let defaultIncluded: any;
+        try {
+            defaultIncluded = JSON.parse(this.storage.getItem('defaultIncluded'));
+        }
+        catch (e) {
+            defaultIncluded = {};
+        }
+
+        const plugins = await systemManager.getComponent('plugins');
 
         for (const id of Object.keys(systemManager.getSystemState())) {
             const device = systemManager.getDeviceById(id);
-            const accessory = supportedTypes[device.type]?.probe(device);
+            const supportedType = supportedTypes[device.type];
+            if (!supportedType?.probe(device))
+                continue;
+
+            try {
+                const mixins: string[] = await plugins.getMixins(device.id);
+                if (!mixins.includes(this.id)) {
+                    if (defaultIncluded[device.id] === includeToken)
+                        continue;
+                    mixins.push(this.id);
+                    await plugins.setMixins(device.id, mixins);
+                    defaultIncluded[device.id] = includeToken;
+                }
+
+            }
+            catch (e) {
+                console.error('error while checking device if syncable', e);
+                throw e;
+            }
+
+            const accessory = supportedType.getAccessory(device);
             if (accessory) {
-                this.bridge.addBridgedAccessory(accessory);
+                if (supportedType.noBridge) {
+                    accessory.publish({
+                        username: '12:34:45:54:24:44',
+                        pincode: '123-45-678',
+                        port: Math.round(Math.random() * 30000 + 10000),
+                        category: Categories.TELEVISION,
+
+                    })
+                }
+                else {
+                    this.bridge.addBridgedAccessory(accessory);
+                }
             }
         }
+
+        this.storage.setItem('defaultIncluded', JSON.stringify(defaultIncluded));
 
         this.bridge.publish({
             username: mac,
             pincode: '123-45-678',
             port: Math.round(Math.random() * 30000 + 10000),
         }, true);
+    }
+
+    canMixin(type: ScryptedDeviceType, interfaces: string[]): string[] {
+        const supportedType = supportedTypes[type];
+        if (!supportedType?.probe({
+            interfaces,
+            type,
+        })) {
+            return null;
+        }
+        return [];
+    }
+    getMixin(device: ScryptedDevice, deviceState: any) {
+        return device;
     }
 }
 
