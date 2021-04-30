@@ -11,6 +11,8 @@ import dgram from 'dgram';
 import { once } from 'events';
 import debounce from 'lodash/debounce';
 
+import os from 'os';
+
 const { mediaManager } = sdk;
 
 async function getPort(): Promise<dgram.Socket> {
@@ -99,8 +101,11 @@ addSupportedType({
                 }
                 sessions.set(request.sessionID, session);
 
+                // const addressOverride = (Object.entries(os.networkInterfaces()).filter(([iface, entry]) => iface.startsWith('en') || iface.startsWith('wlan')) as any)
+                // .flat().map(([iface, entry]) => entry).find(i => i.family == 'IPv4').address;
+
                 const response: PrepareStreamResponse = {
-                    addressOverride: '192.168.2.7',
+                    // addressOverride,
                     video: {
                         srtp_key: request.video.srtp_key,
                         srtp_salt: request.video.srtp_salt,

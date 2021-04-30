@@ -1,11 +1,10 @@
 import sdk, { MixinProvider, ScryptedDevice, ScryptedDeviceBase, ScryptedDeviceType } from '@scrypted/sdk';
-
-const { systemManager, mediaManager } = sdk;
 import { Bridge, Categories, HAPStorage } from 'hap-nodejs';
 import os from 'os';
 import { supportedTypes } from './common';
 import './types'
 
+const { systemManager, mediaManager } = sdk;
 
 HAPStorage.storage();
 class HAPLocalStorage {
@@ -32,7 +31,8 @@ class HAPLocalStorage {
 
 (HAPStorage as any).INSTANCE.localStore = new HAPLocalStorage();
 
-const mac = os.networkInterfaces()['en2'].find(i => i.family === 'IPv4').mac;
+const mac = (Object.entries(os.networkInterfaces()).filter(([iface, entry]) => iface.startsWith('en') || iface.startsWith('wlan')) as any)
+    .flat().map(([iface, entry]) => entry).find(i => i.family == 'IPv4').mac;
 
 function uuidv4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
