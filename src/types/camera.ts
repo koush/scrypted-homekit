@@ -1,7 +1,7 @@
 
 import { Camera, FFMpegInput, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, ScryptedMimeTypes, VideoCamera } from '@scrypted/sdk'
 import { addSupportedType, DummyDevice } from '../common'
-import { AudioStreamingCodecType, AudioStreamingSamplerate, CameraController, CameraStreamingDelegate, CameraStreamingOptions, H264Level, H264Profile, PrepareStreamCallback, PrepareStreamRequest, PrepareStreamResponse, SnapshotRequest, SnapshotRequestCallback, SRTPCryptoSuites, StartStreamRequest, StreamingRequest, StreamRequestCallback, StreamRequestTypes } from 'hap-nodejs';
+import { AudioStreamingCodec, AudioStreamingCodecType, AudioStreamingSamplerate, CameraController, CameraStreamingDelegate, CameraStreamingOptions, H264Level, H264Profile, PrepareStreamCallback, PrepareStreamRequest, PrepareStreamResponse, SnapshotRequest, SnapshotRequestCallback, SRTPCryptoSuites, StartStreamRequest, StreamingRequest, StreamRequestCallback, StreamRequestTypes } from 'hap-nodejs';
 import { makeAccessory } from './common';
 
 import sdk from '@scrypted/sdk';
@@ -215,6 +215,19 @@ addSupportedType({
                 }
             },
         };
+
+        const codecs: AudioStreamingCodec[] = [];
+        for (const type of [AudioStreamingCodecType.OPUS, AudioStreamingCodecType.AAC_ELD]) {
+            for (const samplerate of [AudioStreamingSamplerate.KHZ_8, AudioStreamingSamplerate.KHZ_16, AudioStreamingSamplerate.KHZ_24]) {
+                codecs.push({
+                    type,
+                    samplerate,
+                    bitrate: 0,
+                    audioChannels: 1,
+                })
+            }
+        } 
+
         const streamingOptions: CameraStreamingOptions = {
             video: {
                 codec: {
@@ -227,20 +240,7 @@ addSupportedType({
                 ]
             },
             audio: {
-                codecs: [
-                    {
-                        type: AudioStreamingCodecType.OPUS,
-                        samplerate: AudioStreamingSamplerate.KHZ_24,
-                        bitrate: 0,
-                        audioChannels: 1,
-                    },
-                    {
-                        type: AudioStreamingCodecType.AAC_ELD,
-                        samplerate: AudioStreamingSamplerate.KHZ_24,
-                        bitrate: 0,
-                        audioChannels: 1,
-                    }
-                ]
+                codecs
             },
             supportedCryptoSuites: [
                 // not supported by ffmpeg
