@@ -23,7 +23,9 @@ addSupportedType({
             device.listen({
                 event: ScryptedInterface.Brightness,
                 watch: true,
-            }, (source, details, data) => service.updateCharacteristic(Characteristic.Brightness, Math.max(Math.min(data || 0, 0), 100)));
+            }, (source, details, data) => {
+                service.updateCharacteristic(Characteristic.Brightness, Math.min(Math.max(data || 0, 0), 100));
+            });
         }
 
         return accessory;

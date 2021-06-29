@@ -27,5 +27,7 @@ export function listenCharacteristic(device: ScryptedDevice, event: ScryptedInte
     return device.listen({
         event,
         watch: true,
-    }, (eventSource, eventDetails, data) => service.updateCharacteristic(characteristic, data))
+    }, (eventSource, eventDetails, data) => {
+        service.updateCharacteristic(characteristic, data);
+    })
 }
