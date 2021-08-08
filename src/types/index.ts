@@ -6,3 +6,4 @@ import './sensor';
 import './camera';
 import './thermostat';
 import './mediaplayer';
+import './vacuum';
