@@ -8,7 +8,7 @@ addSupportedType({
     type: ScryptedDeviceType.Vacuum,
     probe(device: DummyDevice): boolean {
         return device.interfaces.includes(ScryptedInterface.StartStop);
-    },    
+    },
     getAccessory: (device: ScryptedDevice & StartStop & Dock) => {
         const accessory = makeAccessory(device);
 
@@ -26,9 +26,9 @@ addSupportedType({
             .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
                 callback(null, !!device.running);
             });
-    
-            listenCharacteristic(device, ScryptedInterface.StartStop, service, Characteristic.On);
 
-            return accessory;
-        }
+        listenCharacteristic(device, ScryptedInterface.StartStop, service, Characteristic.On);
+
+        return accessory;
+    }
 });

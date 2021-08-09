@@ -7,3 +7,4 @@ import './camera';
 import './thermostat';
 import './mediaplayer';
 import './vacuum';
+import './doorbell';
