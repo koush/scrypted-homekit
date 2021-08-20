@@ -1,9 +1,8 @@
 
-import { ScryptedDevice, ScryptedDeviceType, ScryptedInterface, ScryptedInterfaceProperty, TemperatureSetting, TemperatureUnit, Thermometer, ThermostatMode } from '@scrypted/sdk'
+import { HumiditySensor, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, ScryptedInterfaceProperty, TemperatureSetting, TemperatureUnit, Thermometer, ThermostatMode } from '@scrypted/sdk'
 import { addSupportedType, DummyDevice, listenCharacteristic } from '../common'
-import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
+import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from '../hap';
 import { makeAccessory } from './common';
-import { CurrentHeatingCoolingState, HumiditySensor, TargetHeatingCoolingState, TemperatureDisplayUnits } from 'hap-nodejs/dist/lib/definitions';
 
 addSupportedType({
     type: ScryptedDeviceType.Thermostat,
@@ -19,38 +18,38 @@ addSupportedType({
         function toCurrentMode(mode: ThermostatMode) {
             switch (mode) {
                 case ThermostatMode.Off:
-                    return CurrentHeatingCoolingState.OFF;
+                    return Characteristic.CurrentHeatingCoolingState.OFF;
                 case ThermostatMode.Cool:
-                    return CurrentHeatingCoolingState.COOL;
+                    return Characteristic.CurrentHeatingCoolingState.COOL;
                 case ThermostatMode.Heat:
-                    return CurrentHeatingCoolingState.HEAT;
+                    return Characteristic.CurrentHeatingCoolingState.HEAT;
             }
-            return CurrentHeatingCoolingState.HEAT;
+            return Characteristic.CurrentHeatingCoolingState.HEAT;
         }
 
         function toTargetMode(mode: ThermostatMode) {
             switch (mode) {
                 case ThermostatMode.Off:
-                    return TargetHeatingCoolingState.OFF;
+                    return Characteristic.TargetHeatingCoolingState.OFF;
                 case ThermostatMode.Cool:
-                    return TargetHeatingCoolingState.COOL;
+                    return Characteristic.TargetHeatingCoolingState.COOL;
                 case ThermostatMode.Heat:
-                    return TargetHeatingCoolingState.HEAT;
+                    return Characteristic.TargetHeatingCoolingState.HEAT;
                 case ThermostatMode.Auto:
-                    return TargetHeatingCoolingState.AUTO;
+                    return Characteristic.TargetHeatingCoolingState.AUTO;
             }
-            return TargetHeatingCoolingState.AUTO;
+            return Characteristic.TargetHeatingCoolingState.AUTO;
         }
 
         function fromTargetMode(mode: number) {
             switch (mode) {
-                case TargetHeatingCoolingState.OFF:
+                case Characteristic.TargetHeatingCoolingState.OFF:
                     return ThermostatMode.Off;
-                case TargetHeatingCoolingState.HEAT:
+                case Characteristic.TargetHeatingCoolingState.HEAT:
                     return ThermostatMode.Heat;
-                case TargetHeatingCoolingState.COOL:
+                case Characteristic.TargetHeatingCoolingState.COOL:
                     return ThermostatMode.Cool;
-                case TargetHeatingCoolingState.AUTO:
+                case Characteristic.TargetHeatingCoolingState.AUTO:
                     return ThermostatMode.Auto;
             }
         }
@@ -96,7 +95,7 @@ addSupportedType({
 
         service.getCharacteristic(Characteristic.TemperatureDisplayUnits)
             .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
-                callback(null, device.temperatureUnit === TemperatureUnit.C ? TemperatureDisplayUnits.CELSIUS : TemperatureDisplayUnits.FAHRENHEIT);
+                callback(null, device.temperatureUnit === TemperatureUnit.C ? Characteristic.TemperatureDisplayUnits.CELSIUS : Characteristic.TemperatureDisplayUnits.FAHRENHEIT);
             })
 
         device.listen({
@@ -109,7 +108,7 @@ addSupportedType({
             }
             service.updateCharacteristic(Characteristic.CurrentHeatingCoolingState, toCurrentMode(device.thermostatMode));
             service.updateCharacteristic(Characteristic.TargetTemperature, getTargetTemperature());
-            service.updateCharacteristic(Characteristic.TemperatureDisplayUnits, device.temperatureUnit === TemperatureUnit.C ? TemperatureDisplayUnits.CELSIUS : TemperatureDisplayUnits.FAHRENHEIT);
+            service.updateCharacteristic(Characteristic.TemperatureDisplayUnits, device.temperatureUnit === TemperatureUnit.C ? Characteristic.TemperatureDisplayUnits.CELSIUS : Characteristic.TemperatureDisplayUnits.FAHRENHEIT);
         });
 
         listenCharacteristic(device, ScryptedInterface.Thermometer, service, Characteristic.CurrentTemperature);

@@ -1,9 +1,8 @@
 
-import { Dock, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, StartStop } from '@scrypted/sdk'
+import { ScryptedDevice, ScryptedDeviceType, ScryptedInterface, StartStop } from '@scrypted/sdk'
 import { addSupportedType, DummyDevice, listenCharacteristic } from '../common'
-import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
+import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from '../hap';
 import { makeAccessory } from './common';
-import { Active, InUse, ProgramMode } from 'hap-nodejs/dist/lib/definitions';
 
 addSupportedType({
     type: ScryptedDeviceType.Irrigation,
@@ -23,7 +22,7 @@ addSupportedType({
                     device.stop();
             })
             .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
-                callback(null, !!device.running ? Active.ACTIVE : Active.INACTIVE);
+                callback(null, !!device.running ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE);
             });
 
         listenCharacteristic(device, ScryptedInterface.StartStop, service, Characteristic.Active);
@@ -31,13 +30,7 @@ addSupportedType({
 
         service.getCharacteristic(Characteristic.InUse)
         .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
-            callback(null, !!device.running ? InUse.IN_USE : InUse.NOT_IN_USE);
-        });
-
-
-        service.getCharacteristic(Characteristic.ProgramMode)
-        .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
-            callback(null, ProgramMode.NO_PROGRAM_SCHEDULED);
+            callback(null, !!device.running ? Characteristic.InUse.IN_USE : Characteristic.InUse.NOT_IN_USE);
         });
 
         service.getCharacteristic(Characteristic.RemainingDuration)

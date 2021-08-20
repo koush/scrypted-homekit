@@ -1,5 +1,5 @@
 import sdk, { MixinProvider, ScryptedDevice, ScryptedDeviceBase, ScryptedDeviceType } from '@scrypted/sdk';
-import { Bridge, Categories, HAPStorage } from 'hap-nodejs';
+import { Bridge, Categories, HAPStorage } from './hap';
 import os from 'os';
 import { supportedTypes } from './common';
 import './types'

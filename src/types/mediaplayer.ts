@@ -1,9 +1,8 @@
 
 import { VideoCamera, MediaPlayer, MediaPlayerState, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
 import { addSupportedType, DummyDevice } from '../common'
-import { Categories, Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
+import { Categories, Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from '../hap';
 import { makeAccessory } from './common';
-import { Active, CurrentVisibilityState, InputSource, InputSourceType, IsConfigured, SleepDiscoveryMode } from 'hap-nodejs/dist/lib/definitions';
 import sdk from '@scrypted/sdk';
 const { systemManager } = sdk;
 
@@ -24,7 +23,7 @@ addSupportedType({
         const allowedIdentifiers = new Set<string>();
         service.getCharacteristic(Characteristic.Active)
             .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
-                active = value === Active.ACTIVE;
+                active = value === Characteristic.Active.ACTIVE;
                 if (!active)
                     device.stop();
                 callback();
@@ -32,16 +31,16 @@ addSupportedType({
             .on(CharacteristicEventTypes.GET, async (callback: NodeCallback<CharacteristicValue>) => {
                 try {
                     if (active) {
-                        callback(null, Active.ACTIVE);
+                        callback(null, Characteristic.Active.ACTIVE);
                         return;
                     }
                     const mediaStatus = await device.getMediaStatus();
                     if (!mediaStatus || mediaStatus.mediaPlayerState === MediaPlayerState.Idle) {
-                        callback(null, Active.INACTIVE);
+                        callback(null, Characteristic.Active.INACTIVE);
                         return;
                     }
                     active = true;
-                    callback(null, Active.ACTIVE);
+                    callback(null, Characteristic.Active.ACTIVE);
                 }
                 catch (e) {
                     callback(e);
@@ -85,7 +84,7 @@ addSupportedType({
                 callback();
             });
 
-        service.setCharacteristic(Characteristic.SleepDiscoveryMode, SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
+        service.setCharacteristic(Characteristic.SleepDiscoveryMode, Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
 
         const speaker = accessory.addService(Service.TelevisionSpeaker);
         speaker.setCharacteristic(Characteristic.Active, Characteristic.Active.ACTIVE)

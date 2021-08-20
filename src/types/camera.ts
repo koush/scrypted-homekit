@@ -1,17 +1,23 @@
 
-import { Camera, FFMpegInput, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, ScryptedMimeTypes, VideoCamera } from '@scrypted/sdk'
-import { addSupportedType, DummyDevice } from '../common'
-import { AudioStreamingCodec, AudioStreamingCodecType, AudioStreamingSamplerate, CameraController, CameraStreamingDelegate, CameraStreamingOptions, H264Level, H264Profile, PrepareStreamCallback, PrepareStreamRequest, PrepareStreamResponse, SnapshotRequest, SnapshotRequestCallback, SRTPCryptoSuites, StartStreamRequest, StreamingRequest, StreamRequestCallback, StreamRequestTypes } from 'hap-nodejs';
+import { Camera, FFMpegInput, MotionSensor, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, ScryptedMimeTypes, VideoCamera } from '@scrypted/sdk'
+import { addSupportedType, DummyDevice, listenCharacteristic } from '../common'
+import { AudioStreamingCodec, AudioStreamingCodecType, AudioStreamingSamplerate, CameraController, CameraStreamingDelegate, CameraStreamingOptions, Characteristic, H264Level, H264Profile, PrepareStreamCallback, PrepareStreamRequest, PrepareStreamResponse, SnapshotRequest, SnapshotRequestCallback, SRTPCryptoSuites, StartStreamRequest, StreamingRequest, StreamRequestCallback, StreamRequestTypes } from '../hap';
 import { makeAccessory } from './common';
 
 import sdk from '@scrypted/sdk';
 import child_process from 'child_process';
-import { ChildProcess } from 'node:child_process';
+import { ChildProcess } from 'child_process';
 import dgram from 'dgram';
 import { once } from 'events';
 import debounce from 'lodash/debounce';
 
-import os from 'os';
+import { CameraRecordingDelegate, CharacteristicEventTypes, CharacteristicValue, NodeCallback } from '../../HAP-NodeJS/src';
+import { AudioRecordingCodec, AudioRecordingCodecType, AudioRecordingSamplerate, AudioRecordingSamplerateValues, CameraRecordingConfiguration, CameraRecordingOptions } from '../../HAP-NodeJS/src/lib/camera/RecordingManagement';
+import { Readable } from 'stream';
+import { listenZeroCluster } from '../listen-cluster';
+import { createServer, Socket } from 'net';
+import { SelectedCameraRecordingConfiguration } from '../../HAP-NodeJS/src/lib/definitions';
+import fs from "fs";
 
 const { mediaManager } = sdk;
 
@@ -24,12 +30,129 @@ async function getPort(): Promise<dgram.Socket> {
     }
 }
 
+async function readLength(readable: Readable, length: number): Promise<Buffer> {
+    if (!length) {
+        return Buffer.alloc(0);
+    }
+
+    {
+        const ret = readable.read(length);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    return new Promise((resolve, reject) => {
+        const r = () => {
+            const ret = readable.read(length);
+            if (ret) {
+                cleanup();
+                resolve(ret);
+            }
+        };
+
+        const e = () => {
+            cleanup();
+            reject(new Error(`stream ended during read for minimum ${length} bytes`))
+        };
+
+        const cleanup = () => {
+            readable.removeListener('readable', r);
+            readable.removeListener('end', e);
+        }
+
+        readable.on('readable', r);
+        readable.on('end', e);
+    });
+}
+
+interface FFMpegParserSession {
+    socket: Socket;
+    cp: ChildProcess;
+}
+
+
+const iframeIntervalSeconds = 4;
+const numberPrebufferSegments = 2;
+
+async function* handleFragmentsRequests(device: ScryptedDevice & VideoCamera & MotionSensor,
+    configuration: CameraRecordingConfiguration): AsyncGenerator<Buffer, void, unknown> {
+    const media = await device.getVideoStream();
+    const ffmpegInput = JSON.parse((await mediaManager.convertMediaObjectToBuffer(media, ScryptedMimeTypes.FFmpegInput)).toString()) as FFMpegInput;
+
+    const session: FFMpegParserSession = await new Promise(async (resolve) => {
+        const server = createServer(socket => {
+            server.close();
+            resolve({ socket, cp });
+        });
+        const serverPort = await listenZeroCluster(server);
+
+        const args = ffmpegInput.inputArguments.slice();
+
+        args.push(
+            '-acodec', ...(configuration.audioCodec.type === AudioRecordingCodecType.AAC_LC ?
+                ['libfdk_aac', '-profile:a', 'aac_low'] :
+                ['libfdk_aac', '-profile:a', 'aac_eld']),
+                '-ar', `${AudioRecordingSamplerateValues[configuration.audioCodec.samplerate]}k`,
+                '-b:a', `${configuration.audioCodec.bitrate}k`,
+                '-ac', `${configuration.audioCodec.audioChannels}`,
+            // '-vcodec', 'copy',
+            '-f', 'mp4',
+            '-force_key_frames', `expr:gte(t,n_forced*${iframeIntervalSeconds})`,
+            '-movflags', 'frag_keyframe+empty_moov',
+            '-vf', 'scale=1920:1080',
+            `tcp://127.0.0.1:${serverPort}`
+        );
+
+        // args.push(
+        //     '-acodec', 'copy',
+        //     '-vcodec', 'copy',
+        //     '-f', 'mp4',
+        //     '-movflags', 'frag_keyframe+empty_moov',
+        //     `tcp://127.0.0.1:${serverPort}`
+        // );
+        const cp = child_process.spawn('ffmpeg', args, {
+            stdio: 'ignore',
+        });
+        console.log('homekit motion request');
+    });
+
+    const { socket, cp } = session;
+
+    let pending: Buffer[] = [];
+    try {
+        while (true) {
+            const header = await readLength(socket, 8);
+            const length = header.readInt32BE() - 8;
+            const type = header.slice(4).toString();
+            const data = await readLength(socket, length);
+
+            // every moov/moof frame designates an iframe?
+            pending.push(header, data);
+
+            if (type === 'moov' || type === 'mdat') {
+                const fragment = Buffer.concat(pending);
+                pending = [];
+                yield fragment;
+            }
+            // console.log('mp4 box type', type, length);
+        }
+    }
+    catch (e) {
+        console.error('recording error', e);
+    }
+    finally {
+        socket.destroy();
+        cp.kill();
+    }
+}
+
 addSupportedType({
     type: ScryptedDeviceType.Camera,
     probe(device: DummyDevice) {
         return device.interfaces.includes(ScryptedInterface.VideoCamera);
     },
-    getAccessory(device: ScryptedDevice & VideoCamera & Camera) {
+    getAccessory(device: ScryptedDevice & VideoCamera & Camera & MotionSensor) {
         interface Session {
             request: PrepareStreamRequest;
             videossrc: number;
@@ -176,8 +299,8 @@ addSupportedType({
                         console.log('acodec', codec);
                         args.push(
                             "-vn", '-sn', '-dn',
-                            '-acodec', ...(codec === AudioStreamingCodecType.OPUS ? 
-                                ['libopus', '-application', 'lowdelay'] : 
+                            '-acodec', ...(codec === AudioStreamingCodecType.OPUS ?
+                                ['libopus', '-application', 'lowdelay'] :
                                 ['libfdk_aac', '-profile:a', 'aac_eld']),
                             '-flags', '+global_header',
                             '-f', 'null',
@@ -224,9 +347,9 @@ addSupportedType({
                     samplerate,
                     bitrate: 0,
                     audioChannels: 1,
-                })
+                });
             }
-        } 
+        }
 
         const streamingOptions: CameraStreamingOptions = {
             video: {
@@ -249,14 +372,84 @@ addSupportedType({
                 SRTPCryptoSuites.NONE,
             ]
         }
+
+        let recordingDelegate: CameraRecordingDelegate | undefined;
+        let recordingOptions: CameraRecordingOptions | undefined;
+
+        const accessory = makeAccessory(device);
+
+        if (device.interfaces.includes(ScryptedInterface.MotionSensor)) {
+            recordingDelegate = {
+                handleFragmentsRequests(configuration): AsyncGenerator<Buffer, void, unknown> {
+                    return handleFragmentsRequests(device, configuration)
+                }
+            };
+
+            const recordingCodecs: AudioRecordingCodec[] = [];
+            const samplerate: AudioRecordingSamplerate[] = [];
+            for (const sr of [AudioRecordingSamplerate.KHZ_32]) {
+                samplerate.push(sr);
+            }
+
+            for (const type of [AudioRecordingCodecType.AAC_LC]) {
+                const entry: AudioRecordingCodec = {
+                    type,
+                    bitrateMode: 0,
+                    samplerate,
+                    audioChannels: 1,
+                }
+                recordingCodecs.push(entry);
+            }
+
+            recordingOptions = {
+                motionService: true,
+                prebufferLength: numberPrebufferSegments * iframeIntervalSeconds * 1000,
+                eventTriggerOptions: 0x01,
+                mediaContainerConfigurations: [
+                    {
+                        type: 0,
+                        fragmentLength: iframeIntervalSeconds * 1000,
+                    }
+                ],
+
+                video: {
+                    codec: {
+                        levels: [H264Level.LEVEL4_0],
+                        profiles: [H264Profile.HIGH],
+                    },
+                    resolutions: [
+                        // [1920, 1080, 15],
+                        [1920, 1080, 30],
+                    ]
+                },
+                audio: {
+                    codecs: recordingCodecs,
+                },
+            };
+        }
+
         const controller = new CameraController({
             cameraStreamCount: 2,
             delegate,
             streamingOptions,
+            recordingOptions,
+            recordingDelegate,
         });
 
-        const accessory = makeAccessory(device);
         accessory.configureController(controller);
+
+        if (controller.motionService) {
+            const service = controller.motionService;
+            service.getCharacteristic(Characteristic.MotionDetected)
+                .on(CharacteristicEventTypes.GET, (callback: NodeCallback<CharacteristicValue>) => {
+                    callback(null, !!device.motionDetected);
+                });
+
+            listenCharacteristic(device, ScryptedInterface.MotionSensor, service, Characteristic.MotionDetected, true);
+        }
+        else {
+            // maybeAddMotionSensor(device, accessory);
+        }
 
         return accessory;
     }

@@ -1,9 +1,8 @@
 
 import { Lock, LockState, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
 import { addSupportedType, DummyDevice } from '../common'
-import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
+import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from '../hap';
 import { makeAccessory } from './common';
-import { LockCurrentState, LockTargetState } from 'hap-nodejs/dist/lib/definitions';
 
 addSupportedType({
     type: ScryptedDeviceType.Lock,
@@ -17,20 +16,20 @@ addSupportedType({
         function toCurrentState(lockState: LockState) {
             switch (lockState) {
                 case LockState.Locked:
-                    return LockCurrentState.SECURED;
+                    return Characteristic.LockCurrentState.SECURED;
                 case LockState.Jammed:
-                    return LockCurrentState.JAMMED;
+                    return Characteristic.LockCurrentState.JAMMED;
                 default:
-                    return LockCurrentState.UNSECURED;
+                    return Characteristic.LockCurrentState.UNSECURED;
             }
         }
 
         function toTargetState(lockState: LockState) {
             switch (lockState) {
                 case LockState.Locked:
-                    return LockTargetState.SECURED;
+                    return Characteristic.LockTargetState.SECURED;
                 default:
-                    return LockTargetState.UNSECURED;
+                    return Characteristic.LockTargetState.UNSECURED;
             }
         }
 
@@ -50,7 +49,7 @@ addSupportedType({
                 targetState = value as number;
                 callback();
                 switch (targetState) {
-                    case LockTargetState.UNSECURED:
+                    case Characteristic.LockTargetState.UNSECURED:
                         device.unlock();
                         break;
                     default:

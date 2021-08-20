@@ -1,7 +1,7 @@
 
 import { OnOff, ScryptedDevice, ScryptedDeviceType } from '@scrypted/sdk'
 import { addSupportedType } from '../common'
-import { Service } from 'hap-nodejs';
+import { Service } from '../hap';
 import { getAccessory, probe } from './onoff-base';
 
 addSupportedType({

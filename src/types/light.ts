@@ -1,7 +1,7 @@
 
 import { Brightness, OnOff, ScryptedDevice, ScryptedDeviceType, ScryptedInterface } from '@scrypted/sdk'
 import { addSupportedType } from '../common'
-import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from 'hap-nodejs';
+import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from '../hap';
 import { probe, getAccessory } from './onoff-base';
 
 addSupportedType({

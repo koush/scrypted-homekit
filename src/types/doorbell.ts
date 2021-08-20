@@ -1,7 +1,7 @@
 
 import { BinarySensor, Dock, ScryptedDevice, ScryptedDeviceType, ScryptedInterface, StartStop } from '@scrypted/sdk'
 import { addSupportedType, DummyDevice, listenCharacteristic, supportedTypes } from '../common'
-import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from 'hap-nodejs';
+import { Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, NodeCallback, Service } from '../hap';
 import { makeAccessory } from './common';
 
 addSupportedType({
@@ -24,7 +24,7 @@ addSupportedType({
                 callback(null, !!device.binaryState);
             });
 
-        listenCharacteristic(device, ScryptedInterface.BinarySensor, service, Characteristic.ProgrammableSwitchEvent);
+        listenCharacteristic(device, ScryptedInterface.BinarySensor, service, Characteristic.ProgrammableSwitchEvent, true);
 
         return accessory;
     }

@@ -1,6 +1,6 @@
 
 import { OnOff, ScryptedDevice, ScryptedInterface } from '@scrypted/sdk'
-import { uuid, Accessory, Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from 'hap-nodejs';
+import { uuid, Accessory, Characteristic, CharacteristicEventTypes, CharacteristicSetCallback, CharacteristicValue, Service, NodeCallback } from '../hap';
 import { DummyDevice, listenCharacteristic } from '../common';
 import { makeAccessory } from './common';
 
